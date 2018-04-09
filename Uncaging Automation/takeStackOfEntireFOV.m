@@ -10,7 +10,7 @@ zCenter = min(ds.motorZ) + range(ds.motorZ)/2;
 %set appropriate slice number
 numZSlices = ceil(range(zRange)/state.acq.zStepSize);
 
-%set large scam pixel count
+%set large scan pixel count
 pixelsPerLine = 1024;
 linesPerFrame = 1024;
 valref = strfind(get(gh.configurationControls.pixelsPerLine,'String'),num2str(pixelsPerLine));

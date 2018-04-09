@@ -45,7 +45,7 @@ try
                 if mod(state.internal.frameCounter,  state.spc.init.numSlicesPerFrames) == 0
                     RY_imaging = 1;
                     RY_imaging2 = 1;
-                    RY_imaging3 = 0; 
+                    RY_imaging3 = 0;
                 else
                     RY_imaging = 0;
                     RY_imaging2 = 0;
@@ -170,12 +170,12 @@ try
         end
         %%%%%%%%%%%%%%%%%%%%
         % getTime = toc;
-  
+        
     end
     if RY_imaging3
         startLine0 = state.acq.linesPerFrame*state.internal.frameCounter + startLine;
         stopLine0 = state.acq.linesPerFrame*state.internal.frameCounter + stopLine;
-        for i = 1:state.spc.internal.n_acquisition_per_stripe  
+        for i = 1:state.spc.internal.n_acquisition_per_stripe
             if  stopLine0 <= state.spc.internal.lineCounter;
                 break;
             end
@@ -261,7 +261,7 @@ try
     %         acquiredDataIdx = state.internal.frameCounter;
     %     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
+    
     if state.internal.abortActionFunctions
         abortInActionFunction;
         return
@@ -332,15 +332,15 @@ try
                     currenttempImage = uint16(frameFinalData{channelCounter});
                     state.acq.acquiredData{1}{channelCounter}(startLine:stopLine,:) =  currenttempImage;
                 end
+                
+                %%%VI073010B%%%%%%%
+                if discardLineAfterReshape
+                    currenttempImage(end,:) = [];
                     
-                    %%%VI073010B%%%%%%%
-                    if discardLineAfterReshape
-                        currenttempImage(end,:) = [];
-                        
-                        state.acq.acquiredData{1}{channelCounter}(startLine:stopLineLoopDiscard,:) = currenttempImage; %VI092210C
-                    end
-                    %%%%%%%%%%%%%%%%%%%
-%                 end
+                    state.acq.acquiredData{1}{channelCounter}(startLine:stopLineLoopDiscard,:) = currenttempImage; %VI092210C
+                end
+                %%%%%%%%%%%%%%%%%%%
+                %                 end
                 %For averaging case, store rolling sum into double array
                 if averagingSave
                     avgCounterSave = mod(state.internal.frameCounter,state.acq.numAvgFramesSave) + 1;
@@ -352,21 +352,35 @@ try
                     end
                 end
                 
-%                 if averagingDisplay
-                    avgFactor = min(state.acq.numAvgFramesDisplay,length(state.acq.acquiredData));
-                    indices = startLine:stopLineLoopDiscard; %stripe indices
-                    
-                    if (state.internal.frameCounter + 1) == 1
-                        state.internal.tempImageDisplay{channelCounter}(indices,:) = double(state.acq.acquiredData{1}{channelCounter}(indices,:));
-                    elseif (state.internal.frameCounter + 1) <= avgFactor
-                        state.internal.tempImageDisplay{channelCounter}(indices,:) = ...
-                            (state.internal.frameCounter * state.internal.tempImageDisplay{channelCounter}(indices,:) + double(state.acq.acquiredData{1}{channelCounter}(indices,:))) / (state.internal.frameCounter + 1);
-                    else
-                        state.internal.tempImageDisplay{channelCounter}(indices,:) = ...
-                            state.internal.tempImageDisplay{channelCounter}(indices,:) + (double(state.acq.acquiredData{1}{channelCounter}(indices,:)) - double(state.acq.acquiredData{avgFactor+1}{channelCounter}(indices,:))) / avgFactor;
+                %                 if averagingDisplay
+                avgFactor = min(state.acq.numAvgFramesDisplay,length(state.acq.acquiredData));
+                indices = startLine:stopLineLoopDiscard; %stripe indices
+                if min(size(state.internal.tempImageDisplay{channelCounter}) == ...
+                        size(state.acq.acquiredData{1}{channelCounter})) == 0
+                    %First frame actions
+                    % This needs to be done, otherwise causes an error if
+                    % resolution is changed and focus isn't done first
+                    if state.internal.focusFrameCounter == 0
+                        %Initialize averaging buffer
+                        %             if state.acq.averagingDisplay
+                        state.internal.tempImageDisplay = cell(1, state.init.maximumNumberOfInputChannels);
+                        for i=1:state.init.maximumNumberOfInputChannels
+                            state.internal.tempImageDisplay{i} = zeros(size(state.acq.acquiredData{1}{i})); %VI092310A
+                        end
+                        %             end
                     end
-                    
-%                 end
+                end
+                if (state.internal.frameCounter + 1) == 1
+                    state.internal.tempImageDisplay{channelCounter}(indices,:) = double(state.acq.acquiredData{1}{channelCounter}(indices,:));
+                elseif (state.internal.frameCounter + 1) <= avgFactor
+                    state.internal.tempImageDisplay{channelCounter}(indices,:) = ...
+                        (state.internal.frameCounter * state.internal.tempImageDisplay{channelCounter}(indices,:) + double(state.acq.acquiredData{1}{channelCounter}(indices,:))) / (state.internal.frameCounter + 1);
+                else
+                    state.internal.tempImageDisplay{channelCounter}(indices,:) = ...
+                        state.internal.tempImageDisplay{channelCounter}(indices,:) + (double(state.acq.acquiredData{1}{channelCounter}(indices,:)) - double(state.acq.acquiredData{avgFactor+1}{channelCounter}(indices,:))) / avgFactor;
+                end
+                
+                %                 end
                 
             end
         end
@@ -386,15 +400,15 @@ try
         %Draw data
         for channelCounter = 1:state.init.maximumNumberOfInputChannels
             if state.acq.imagingChannel(channelCounter)
-%                 if averagingDisplay
-%                     set(state.internal.imagehandle(channelCounter), 'CData', ...
-%                         state.internal.tempImageDisplay{channelCounter}(startLine:stopLine,:), 'YData', [startLine stopLine]);
+                %                 if averagingDisplay
+                %                     set(state.internal.imagehandle(channelCounter), 'CData', ...
+                %                         state.internal.tempImageDisplay{channelCounter}(startLine:stopLine,:), 'YData', [startLine stopLine]);
                 set(state.internal.imagehandle(channelCounter), 'CData', ...
                     state.internal.tempImageDisplay{channelCounter});
-%                 elseif ~averagingDisplay
-%                     set(state.internal.imagehandle(channelCounter), 'CData', ...
-%                         state.acq.acquiredData{1}{channelCounter}(startLine:stopLine,:), 'YData', [startLine stopLine]); %VI092210C
-%                 end
+                %                 elseif ~averagingDisplay
+                %                     set(state.internal.imagehandle(channelCounter), 'CData', ...
+                %                         state.acq.acquiredData{1}{channelCounter}(startLine:stopLine,:), 'YData', [startLine stopLine]); %VI092210C
+                %                 end
             end
         end
     end
@@ -411,7 +425,7 @@ try
         end
         %mergeTime = toc;
     end
-%     
+    %
     %Update figures/GUI status
     setStatusString('Acquiring...');
     
@@ -432,14 +446,14 @@ try
             return;
         end
         %disp('c');
-        if isfield(af,'params') && ~streamToDisk %add images to autofocus if not streaming to disk. 
+        if isfield(af,'params') && ~streamToDisk %add images to autofocus if not streaming to disk.
             try
                 if af.params.useAcqForAF && ~state.spc.acq.spc_takeFLIM%MISHA - 1-30-15 - add images to autofocus structure if they are required
                     addToAF();
                 end
             end
         end
-        if RY_imagingSave 
+        if RY_imagingSave
             
             %Write Data
             if streamToDisk  %VI092310A %VI092210A
