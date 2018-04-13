@@ -3,10 +3,17 @@ function finishUAuncaging
 %runs when uncaging is complete and is used to decide whether there is a
 %next step which should be taken in the automation sequence
 
-global dia
+global dia ua spineTracker
 
 if ~isfield(dia.acq,'pageAcqOn') || ~dia.acq.pageAcqOn
-    setJobQueueTimer(1);
+    if ua.UAmodeON
+        setJobQueueTimer(1);
+    end
+end
+
+if isfield(spineTracker,'uncaging_flag') && spineTracker.uncaging_flag
+    write_to_SpineTracker('UncagingDone');
+    spineTracker.uncaging_flag = false;
 end
 % 
 % try
